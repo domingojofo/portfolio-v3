@@ -588,7 +588,7 @@ html[data-intro="playing"] .mobile-bar { opacity: 0; pointer-events: none; }
 @media (max-width: 1023px) {
   /* Hero grid: three column lines, type sized to the width, rows higher up */
   .hero {
-    height: max(100svh, 760px);   /* short phones scroll a little rather than overlap */
+    height: max(100svh, 640px);   /* very short phones scroll a little rather than overlap */
     --fs: 17.9cqw;
     --v1: 1.75cqw;  --v3: 64.9cqw;  --v4: 97.75cqw;
     --y0: 0px;
@@ -609,8 +609,13 @@ html[data-intro="playing"] .mobile-bar { opacity: 0; pointer-events: none; }
   }
   .bio .br-wide { display: none; }
 
-  /* Carousel sits above the bottom bar */
-  .ticker { height: 56px; bottom: 40px; }
+  /* Carousel sits on the bottom edge of the screen, its lower half under the 4vh blur —
+     a hint there's more below. The hero's content stays in the top ~85%. */
+  .ticker { height: max(48px, 8vh); bottom: 0; align-items: flex-start; }
+  .ticker-track { height: 50%; }                  /* words ride the clear top half */
+  .ticker-group { height: 100%; }
+  .edge-blur--bottom { --edge-h: 4vh; }
+  .mobile-bar { bottom: max(6px, calc(2vh - 12px)); }   /* bottom bar sits in the blurred half */
 
   /* Top bar is just the logo; pages + LinkedIn/CV live in the bottom bar */
   .edge-blur--top { --edge-h: 72px; }
