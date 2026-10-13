@@ -1,10 +1,12 @@
 "use client";
 
+import { motion } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { INTRO_KEY } from "@/lib/intro";
 import { pageIndex, pages } from "@/lib/pages";
+import { useMenu } from "./CommandMenu";
 import { EdgeFx } from "./EdgeBlur";
 import { SocialLinks } from "./SocialLinks";
 
@@ -41,11 +43,28 @@ export function replayIntro(e: React.MouseEvent<HTMLAnchorElement>) {
   else location.assign("/");
 }
 
+// True once the page has scrolled a little
+function useScrolled(threshold = 24) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const sync = () => setScrolled(scrollY > threshold);
+    sync();
+    addEventListener("scroll", sync, { passive: true });
+    return () => removeEventListener("scroll", sync);
+  }, [threshold]);
+  return scrolled;
+}
+
+const swap = { duration: 0.35, ease: [0.22, 1, 0.36, 1] } as const;
+
 // The top blur strip doubles as the nav bar: logo (→ Hey) on the left; pages + LinkedIn/CV on the right.
+// Once you scroll, the links slide up out of view and the Menu button (⌘K) drops into their place.
 // On mobile/iPad the right side moves to the bottom bar (MobileBar).
 export function Nav() {
   const pathname = usePathname();
   const current = pageIndex(pathname);
+  const scrolled = useScrolled();
+  const { open, setOpen } = useMenu();
   useArrowKeyNav(pathname);
 
   return (
@@ -55,7 +74,13 @@ export function Nav() {
         <Link className="logo" href="/" aria-label="Jofo — Hey" onClick={replayIntro}>
           <Logo />
         </Link>
-        <div className="nav-right">
+        <motion.div
+          className="nav-right"
+          animate={scrolled ? { y: -28, opacity: 0 } : { y: 0, opacity: 1 }}
+          transition={swap}
+          style={{ pointerEvents: scrolled ? "none" : undefined }}
+          inert={scrolled}
+        >
           <ul className="nav-links">
             {pages.slice(1).map(({ href, label }, i) => (
               <li key={href}>
@@ -64,7 +89,25 @@ export function Nav() {
             ))}
           </ul>
           <SocialLinks />
-        </div>
+        </motion.div>
+        <motion.button
+          type="button"
+          className="menu-trigger"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-keyshortcuts="Meta+K Control+K"
+          onClick={() => setOpen(true)}
+          initial={false}
+          animate={scrolled ? { y: 0, opacity: 1 } : { y: -28, opacity: 0 }}   // drops down into place
+          whileHover={{ y: 2, transition: { duration: 0.12 } }}   // key presses down as its thick bottom edge thins
+          whileTap={{ y: 3, scale: 0.97, transition: { duration: 0.08 } }}
+          transition={swap}
+          style={{ pointerEvents: scrolled ? undefined : "none" }}
+          inert={!scrolled}
+        >
+          Menu
+          <span className="menu-trigger-key" aria-hidden="true">⌘K</span>
+        </motion.button>
       </div>
     </nav>
   );

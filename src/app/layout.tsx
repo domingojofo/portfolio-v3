@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { MenuProvider } from "@/components/CommandMenu";
 import { BottomBlur } from "@/components/EdgeBlur";
 import { MobileBar } from "@/components/MobileBar";
 import { Nav } from "@/components/Nav";
@@ -46,11 +47,13 @@ export default function RootLayout({ children, modal }: LayoutProps<"/">) {
       </head>
       <body>
         <div className="paper" />
-        {children}
-        {modal}
-        <Nav />
-        <BottomBlur />
-        <MobileBar />
+        <MenuProvider>
+          {children}
+          {modal}
+          <Nav />
+          <BottomBlur />
+          <MobileBar />
+        </MenuProvider>
         <script dangerouslySetInnerHTML={{ __html: designScrollScript }} />
       </body>
     </html>
