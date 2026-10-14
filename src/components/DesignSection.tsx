@@ -19,7 +19,7 @@ export function DesignSection() {
             <li key={p.slug}>
               {/* scroll={false}: opening the project modal shouldn't move the page underneath */}
               <Link className="project-card" href={`/design/${p.slug}`} scroll={false}>
-                <Image src={p.cover.src} width={p.cover.width} height={p.cover.height} alt={p.cover.alt} sizes="(max-width: 1088px) 100vw, 1040px"
+                <Image src={p.cover.src} width={p.cover.width} height={p.cover.height} alt={p.cover.alt} sizes="(max-width: 1536px) calc(100vw - 96px), 1440px"
                   loading={i === 0 ? "eager" : "lazy"} /* first image is on screen when /design opens */ />
               </Link>
             </li>

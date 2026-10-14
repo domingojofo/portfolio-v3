@@ -110,17 +110,21 @@ export function compact(v: number) {
 }
 
 const fmt = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...o });
-const dateTime = fmt({ month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const day = fmt({ month: "short", day: "numeric" });
-const dayHour = fmt({ month: "short", day: "numeric", hour: "numeric" });
 const month = fmt({ month: "short", year: "numeric" });
+const time = fmt({ hour: "numeric", minute: "2-digit" });
+const hour = fmt({ hour: "numeric" });
+// Date and time are formatted separately and joined: combined date+time patterns differ between
+// ICU versions ("Oct 12 at 3 PM" in Node vs "Oct 12, 3 PM" in Safari), which broke hydration.
+const dateTime = (t: number) => `${day.format(t)}, ${time.format(t)}`;
+const dayHour = (t: number) => `${day.format(t)}, ${hour.format(t)}`;
 
 export function pointLabel(range: Range, t: number) {
-  return range === "24h" || range === "7d" ? dateTime.format(t) : day.format(t);
+  return range === "24h" || range === "7d" ? dateTime(t) : day.format(t);
 }
 
 export function bucketLabel(range: Range, b: Bucket) {
-  if (range === "24h") return dayHour.format(b.at);
+  if (range === "24h") return dayHour(b.at);
   if (range === "1y") return month.format(b.at);
   return day.format(b.at);
 }

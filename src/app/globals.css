@@ -11,6 +11,11 @@
   --sans: var(--font-graphik), system-ui, sans-serif;
   --wide: var(--font-graphik-wide), var(--font-graphik), system-ui, sans-serif;
 
+  /* Width of the project panels (breakout, after robwinters.github.io): wider than the 1040px
+     text column, up to 1440px, always leaving at least 48px each side. The hero's outer grid
+     lines use the same width, so they line up with the panels' edges. */
+  --panel-w: clamp(min(1040px, 100vw - 48px), 100vw - 96px, 1440px);
+
   /* How much of the Design section (its carousel edge) peeks up from the bottom of the first screen */
   --peek: 6svh;
   /* Desktop bottom dock (nav links / Menu button). It floats over the peeking carousel on purpose:
@@ -64,14 +69,22 @@ a { color: inherit; }
 
   /* Type scale + rows, all derived from the hero's size (cqw/cqh = % of hero width/height).
      Word box height = Maragsa cap height (0.697em) + 0.03em top padding. */
-  --fs: min(11.67cqw, 19cqh);
+  /* Headline size follows the panel width (bigger on wider windows), capped by the window height
+     so it never crowds the intro copy */
+  --fs: min(var(--panel-w) * .15, 22cqh);
   --row: calc(var(--fs) * 0.727);
   --gap: calc(var(--fs) * 0.18);
   --y0: 6cqh;                                               /* top band line */
   --y1: 24.8cqh;                                            /* top of row 1 */
   --y2: calc(var(--y1) + var(--row) * 2 + var(--gap));      /* bottom of row 2 */
   --y3: calc(100cqh - var(--peek));                        /* top of the carousel */
-  --v1: 7.5cqw;  --v2: 19.1cqw;  --v3: 75.5cqw;  --v4: 92.6cqw;   /* column lines */
+  /* Column lines. The outer two sit on the project panels' edges; the inner two keep their
+     original proportions inside that frame. */
+  --gl: calc((100cqw - var(--panel-w)) / 2);
+  --v1: var(--gl);
+  --v2: calc(var(--gl) + var(--panel-w) * .1363);
+  --v3: calc(var(--gl) + var(--panel-w) * .799);
+  --v4: calc(100cqw - var(--gl));
 }
 
 /* Scroll parallax layer (Hero.tsx): the intro copy drifts up */
@@ -127,7 +140,11 @@ html[data-intro="playing"] .ln.v { transform: scaleY(0); }
 .word .txt { position: relative; z-index: 1; }
 .word .bg {
   position: absolute; inset: 0;
-  background: var(--hl);
+  /* Orange with a fine printed grain, multiplied in so the speckle reads as darker orange */
+  background-color: var(--hl);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45  0 0 0 0 .22  0 0 0 0 .08  0 0 0 .7 -.12'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+  background-blend-mode: multiply;
   transform-origin: left center;
 }
 html[data-intro="playing"] .word .bg { transform: scaleX(0); }
@@ -172,7 +189,7 @@ html[data-intro="playing"] .cell { clip-path: inset(0 0 100% 0); }
 /* Intro copy */
 .bio {
   position: absolute;
-  left: calc(19.1% + 19px);
+  left: calc(var(--v2) + 19px);
   bottom: calc(100cqh - var(--y3) + 22px);
   z-index: 3;
   font-family: var(--sans);
@@ -300,7 +317,25 @@ html[data-intro="playing"] .ticker { opacity: 0; }
 }
 .design h2 { margin-bottom: 48px; }
 
-.project-list { list-style: none; padding: 0; display: grid; gap: 24px; }
+/* minmax(0, 1fr): the column never grows past the screen to fit a card's minimum width.
+   Breakout (after robwinters.github.io): the text stays in the 1040px column, but the project
+   panels grow past it on wider windows, up to 1440px, always leaving at least 48px each side.
+   On narrow screens 100vw − 96px is smaller than the column, so they simply fill it. */
+.project-list {
+  width: var(--panel-w);
+  margin-left: calc((100% - var(--panel-w)) / 2);
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+.project-list > li { min-width: 0; }
+/* Panels: softly rounded, 6px at 960px wide growing to 9px at 1440px */
+.project-list :is(.project-card, .td-card, .banks-card, .va-card) {
+  border-radius: clamp(6px, (100vw - 96px) * .00625, 9px);
+  overflow: hidden;
+}
 .project-card { display: block; text-decoration: none; }
 .project-card img { display: block; width: 100%; height: auto; }
 .project-card-meta {
@@ -315,12 +350,12 @@ html[data-intro="playing"] .ticker { opacity: 0; }
 .project-row {
   display: grid;
   grid-template-columns: 1.5014fr .6667fr;
-  gap: 24px;
+  gap: clamp(16px, 16px + (100vw - 1056px) / 60, 24px);   /* 16px at 960px wide → 24px at 1440px */
   align-items: start;
 }
 .project-row > * { min-width: 0; }
 @media (max-width: 640px) {
-  .project-row { grid-template-columns: 1fr; gap: 24px; }
+  .project-row { grid-template-columns: minmax(0, 1fr); gap: 24px; }
 }
 .project-card-title { font-family: var(--serif); font-size: 20px; }
 .project-card:hover .project-card-title { color: var(--hl); }
@@ -787,6 +822,7 @@ html[data-intro="playing"] .mobile-bar { opacity: 0; pointer-events: none; }
     --y3: 65.1cqh;                /* rule above the intro copy */
   }
   .ln.y0, .ln.x2, .cell-3 { display: none; }
+  .ln.x3 { bottom: auto; height: var(--y3); }   /* stops at the rule above the intro copy */
   .w-2 { --pad: 0.03em 0.03em 0 0.02em; }        /* highlight starts right at the "C" */
 
   .bio {
@@ -812,6 +848,7 @@ html[data-intro="playing"] .mobile-bar { opacity: 0; pointer-events: none; }
   .mobile-bar { display: flex; }
 
   .design-inner { padding: 96px 16px 160px; }
+  .project-list { width: 100%; margin-left: 0; }
   .page { padding: 112px 20px 160px; }
   .modal-backdrop { padding: 56px 12px; }
   .modal-panel { padding: 48px 20px 24px; }

@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 import Image from "next/image";
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { INTRO_KEY } from "@/lib/intro";
 
 // ---------- Timing (ms, from when typing starts) ----------
@@ -31,16 +31,30 @@ export function shouldPlayIntro() {
 }
 
 // Scroll parallax while the Design section rises over the pinned hero:
-// the intro copy drifts up (in px per px scrolled).
+// the intro copy drifts up (in px per px scrolled). Desktop only — on mobile it stays put
+// under its grid rule.
 const BIO_DRIFT = -0.35;
+
+function useIsDesktop() {
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    const mq = matchMedia("(min-width: 1024px)");
+    const sync = () => setDesktop(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return desktop;
+}
 
 export function Hero() {
   const heroRef = useRef<HTMLElement>(null);
   const reduceMotion = useReducedMotion();
+  const isDesktop = useIsDesktop();
   const { scrollY } = useScroll();
   // Clamp to the first screen — after that the hero is fully covered
   const covered = (y: number) => Math.min(y, typeof window === "undefined" ? 0 : innerHeight);
-  const bioY = useTransform(scrollY, (y) => (reduceMotion ? 0 : covered(y) * BIO_DRIFT));
+  const bioY = useTransform(scrollY, (y) => (reduceMotion || !isDesktop ? 0 : covered(y) * BIO_DRIFT));
 
   // Layout effect so the intro's starting state is in place before the first client paint
   useLayoutEffect(() => {
