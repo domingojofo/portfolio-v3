@@ -828,9 +828,27 @@ html:not(.nav-toolbar) .tb { display: none; }
 html.nav-toolbar :is(.dock-links, .dock .menu-trigger, .mobile-bar .page-menu-button) { display: none; }
 /* Toolbar mode: the dock holds only the ← → hint, in its original spot in the bottom band (it
    slides away while scrolling down and back up when scrolling up — see useHintHidden in Nav.tsx).
-   On mobile the bottom bar keeps just LinkedIn + CV, level with the toolbar. */
+   On mobile the toolbar owns the bottom: the clock + LinkedIn/CV move up beside the logo, and
+   everything is 1.25× bigger with tap areas that cover the whole bar (no dead spots between icons). */
 @media (max-width: 1023px) {
-  html.nav-toolbar .mobile-bar { bottom: calc(20px + 49px / 2 - 8px); }    /* centred on the toolbar */
+  html.nav-toolbar .mobile-bar { display: none; }
+  html.nav-toolbar .top-right { display: flex; gap: 16px; }
+  html.nav-toolbar .top-right .locale { font-size: 13px; }
+  html.nav-toolbar .top-right .social { gap: 14px; }
+  html.nav-toolbar .top-right .social-icon { zoom: 1.25; }   /* 16 → 20px */
+  html.nav-toolbar .top-right .social a { position: relative; }
+  html.nav-toolbar .top-right .social a::after { content: ""; position: absolute; inset: -12px -7px; }   /* ~44px target */
+
+  html.nav-toolbar .tb-bar { height: 61px; gap: 10px; padding: 0 10px; border-radius: 10px; }
+  html.nav-toolbar .tb-item { height: 40px; border-radius: 7px; }
+  html.nav-toolbar .tb-item::after { content: ""; position: absolute; inset: -10.5px -5px; }   /* fills the bar's height and gaps */
+  html.nav-toolbar .tb-icon { width: 35px; -webkit-mask-size: 35px 40px; mask-size: 35px 40px; }
+  html.nav-toolbar .tb-label > span { font-size: 15px; line-height: 25px; padding-right: 10px; }
+}
+/* Very narrow phones (iPhone SE 1st gen): tighter spacing so the bar keeps a margin */
+@media (max-width: 359px) {
+  html.nav-toolbar .tb-bar { gap: 6px; padding: 0 6px; }
+  html.nav-toolbar .tb-item::after { inset: -10.5px -3px; }
 }
 .tb-bar {
   display: flex;
@@ -955,7 +973,7 @@ html.nav-toolbar :is(.dock-links, .dock .menu-trigger, .mobile-bar .page-menu-bu
   /* The carousel edge of the Design section peeks up from the bottom of the screen, under the
      blur — a hint there's more below. The hero's content stays in the top ~85%. */
   :root { --peek: max(48px, 8vh); }
-  .edge-blur--bottom { --edge-h: 11vh; }
+  .edge-blur--bottom { --edge-h: 14vh; }   /* taller on mobile so it backs the 1.25× toolbar */
   .mobile-bar { bottom: max(6px, calc(2vh - 12px)); }
 
   /* Top bar is just the logo; pages + LinkedIn/CV live in the bottom bar */
