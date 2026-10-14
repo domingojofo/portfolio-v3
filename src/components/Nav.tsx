@@ -3,16 +3,26 @@
 import { motion } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { INTRO_KEY } from "@/lib/intro";
 import { pageIndex, pages } from "@/lib/pages";
 import { useMenu } from "./CommandMenu";
 import { EdgeFx } from "./EdgeBlur";
 import { SocialLinks } from "./SocialLinks";
 
-// ← / → step through the pages in nav order
-function useArrowKeyNav(pathname: string) {
+// Step to the previous / next page in nav order (← / → keys and the hint keycaps)
+function usePageStep() {
   const router = useRouter();
+  const pathname = usePathname();
+  return useCallback((step: -1 | 1) => {
+    const next = pageIndex(pathname) + step;
+    if (next < 0 || next >= pages.length) return false;
+    router.push(pages[next].href);
+    return true;
+  }, [pathname, router]);
+}
+
+function useArrowKeyNav(go: (step: -1 | 1) => boolean) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
@@ -20,14 +30,11 @@ function useArrowKeyNav(pathname: string) {
       const el = e.target instanceof Element ? e.target : null;
       if (el?.closest("input, textarea, select, [contenteditable]")) return;       // typing
       if (document.querySelector("[role=dialog]:not([hidden])")?.getClientRects().length) return; // modal open
-      const next = pageIndex(pathname) + (e.key === "ArrowRight" ? 1 : -1);
-      if (next < 0 || next >= pages.length) return;
-      e.preventDefault();
-      router.push(pages[next].href);
+      if (go(e.key === "ArrowRight" ? 1 : -1)) e.preventDefault();
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
-  }, [pathname, router]);
+  }, [go]);
 }
 
 // Clicking the logo reloads Hey from the top and replays the intro.
@@ -43,53 +50,151 @@ export function replayIntro(e: React.MouseEvent<HTMLAnchorElement>) {
   else location.assign("/");
 }
 
-// True once the page has scrolled a little
-function useScrolled(threshold = 24) {
-  const [scrolled, setScrolled] = useState(false);
+const SCROLL_KEYS = new Set(["ArrowDown", "PageDown", " ", "End"]);
+
+// The nav steps aside only when the visitor scrolls down themselves (wheel, trackpad, swipe,
+// scroll keys). It comes back on every page switch and at the top of the page. Scrolls the
+// site does on its own (opening /design at its section, smooth-scrolling after a link) don't hide it.
+function useNavHidden(pathname: string, threshold = 24) {
+  const [hidden, setHidden] = useState(false);
+
+  // A new page always shows the nav
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) {
+    setLastPath(pathname);
+    setHidden(false);
+  }
+
   useEffect(() => {
-    const sync = () => setScrolled(scrollY > threshold);
-    sync();
-    addEventListener("scroll", sync, { passive: true });
-    return () => removeEventListener("scroll", sync);
+    let wantsDown = false;                   // the visitor just asked to scroll down
+    let intentTimer: ReturnType<typeof setTimeout>;
+    const intendDown = () => {
+      wantsDown = true;
+      clearTimeout(intentTimer);
+      intentTimer = setTimeout(() => (wantsDown = false), 250);
+    };
+
+    const onScroll = () => {
+      const down = scrollY > threshold;
+      document.documentElement.classList.toggle("is-scrolled", down);   // page-wide hook (e.g. the Design section's shadow)
+      if (!down) setHidden(false);
+      else if (wantsDown) setHidden(true);
+    };
+    const onWheel = (e: WheelEvent) => { if (e.deltaY > 0) intendDown(); };
+    let touchY = 0;
+    const onTouchStart = (e: TouchEvent) => { touchY = e.touches[0].clientY; };
+    const onTouchMove = (e: TouchEvent) => { if (e.touches[0].clientY < touchY - 4) intendDown(); };
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target instanceof Element ? e.target : null;
+      if (SCROLL_KEYS.has(e.key) && !el?.closest("input, textarea, select, button, [contenteditable]")) intendDown();
+    };
+
+    onScroll();
+    addEventListener("scroll", onScroll, { passive: true });
+    addEventListener("wheel", onWheel, { passive: true });
+    addEventListener("touchstart", onTouchStart, { passive: true });
+    addEventListener("touchmove", onTouchMove, { passive: true });
+    addEventListener("keydown", onKey);
+    return () => {
+      clearTimeout(intentTimer);
+      removeEventListener("scroll", onScroll);
+      removeEventListener("wheel", onWheel);
+      removeEventListener("touchstart", onTouchStart);
+      removeEventListener("touchmove", onTouchMove);
+      removeEventListener("keydown", onKey);
+    };
   }, [threshold]);
-  return scrolled;
+
+  return hidden;
 }
 
-const swap = { duration: 0.35, ease: [0.22, 1, 0.36, 1] } as const;
+// Live New York time, HH:MM:SS (24h). Rendered after mount so server and client HTML match.
+const nycTime = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+});
+function NycClock() {
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      setNow(new Date());
+      timer = setTimeout(tick, 1000 - (Date.now() % 1000));   // land on each new second
+    };
+    tick();
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <time className="clock" dateTime={now?.toISOString()} aria-label="Local time in New York">
+      {now ? nycTime.format(now) : "\u00A0"}
+    </time>
+  );
+}
 
-// The top blur strip doubles as the nav bar: logo (→ Hey) on the left; pages + LinkedIn/CV on the right.
-// Once you scroll, the links slide up out of view and the Menu button (⌘K) drops into their place.
-// On mobile/iPad the right side moves to the bottom bar (MobileBar).
+const ease = [0.22, 1, 0.36, 1] as const;
+const STAGGER = 0.05;
+
+// Top: the blur strip with the logo (→ Hey, replays the intro) on the left; location, live time
+// and LinkedIn/CV on the right. Stays put while scrolling.
+// Bottom (desktop): page links centred, navigation hint on the left. Once you scroll, the links
+// drop away one after another (the hint with them) and the Menu button (⌘K) rises into their place.
+// On mobile/iPad the bottom bar (MobileBar) takes over.
 export function Nav() {
   const pathname = usePathname();
   const current = pageIndex(pathname);
-  const scrolled = useScrolled();
+  const scrolled = useNavHidden(pathname);   // true → links + hint step aside, Menu button shows
   const { open, setOpen } = useMenu();
-  useArrowKeyNav(pathname);
+  const go = usePageStep();
+  useArrowKeyNav(go);
+  const links = pages.slice(1);
 
   return (
-    <nav className="edge-blur edge-blur--top" aria-label="Main">
-      <EdgeFx />
-      <div className="nav-inner">
-        <Link className="logo" href="/" aria-label="Jofo — Hey" onClick={replayIntro}>
-          <Logo />
-        </Link>
+    <>
+      <header className="edge-blur edge-blur--top">
+        <EdgeFx />
+        <div className="nav-inner">
+          <Link className="logo" href="/" aria-label="Jofo — Hey" onClick={replayIntro}>
+            <Logo />
+          </Link>
+          <div className="top-right">
+            <p className="locale">BK, NYC <NycClock /></p>
+            <SocialLinks />
+          </div>
+        </div>
+      </header>
+
+      <nav className="dock" aria-label="Main">
         <motion.div
-          className="nav-right"
-          animate={scrolled ? { y: -28, opacity: 0 } : { y: 0, opacity: 1 }}
-          transition={swap}
-          style={{ pointerEvents: scrolled ? "none" : undefined }}
+          className="nav-hint"
+          initial={false}
+          animate={scrolled ? { y: 48, opacity: 0 } : { y: 0, opacity: 1 }}
+          transition={{ duration: 0.4, ease, delay: scrolled ? 0 : STAGGER * links.length }}
           inert={scrolled}
         >
-          <ul className="nav-links">
-            {pages.slice(1).map(({ href, label }, i) => (
-              <li key={href}>
-                <Link href={href} aria-current={current === i + 1 ? "page" : undefined}>{label}</Link>
-              </li>
-            ))}
-          </ul>
-          <SocialLinks />
+          <button type="button" className="keycap" aria-label="Previous page" onClick={() => go(-1)}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- tiny static SVG */}
+            <img src="/icons/key-left.svg" width={20} height={20} alt="" />
+          </button>
+          <button type="button" className="keycap" aria-label="Next page" onClick={() => go(1)}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- tiny static SVG */}
+            <img src="/icons/key-right.svg" width={20} height={20} alt="" />
+          </button>
+          <span>To navigate</span>
         </motion.div>
+
+        <ul className="dock-links" inert={scrolled}>
+          {links.map(({ href, label }, i) => (
+            <motion.li
+              key={href}
+              initial={false}
+              animate={scrolled ? { y: 48, opacity: 0 } : { y: 0, opacity: 1 }}
+              // drop away left to right; come back right to left
+              transition={{ duration: 0.4, ease, delay: STAGGER * (scrolled ? i : links.length - 1 - i) }}
+            >
+              <Link href={href} aria-current={current === i + 1 ? "page" : undefined}>{label}</Link>
+            </motion.li>
+          ))}
+        </ul>
+
         <motion.button
           type="button"
           className="menu-trigger"
@@ -98,18 +203,18 @@ export function Nav() {
           aria-keyshortcuts="Meta+K Control+K"
           onClick={() => setOpen(true)}
           initial={false}
-          animate={scrolled ? { y: 0, opacity: 1 } : { y: -28, opacity: 0 }}   // drops down into place
+          animate={scrolled ? { y: 0, opacity: 1 } : { y: 48, opacity: 0 }}   // rises into the links' place
           whileHover={{ y: 2, transition: { duration: 0.12 } }}   // key presses down as its thick bottom edge thins
           whileTap={{ y: 3, scale: 0.97, transition: { duration: 0.08 } }}
-          transition={swap}
-          style={{ pointerEvents: scrolled ? undefined : "none" }}
+          transition={{ duration: 0.45, ease, delay: scrolled ? STAGGER * links.length : 0 }}
+          style={{ x: "-50%" }}
           inert={!scrolled}
         >
           Menu
           <span className="menu-trigger-key" aria-hidden="true">⌘K</span>
         </motion.button>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 }
 

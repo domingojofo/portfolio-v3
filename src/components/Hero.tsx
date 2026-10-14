@@ -1,9 +1,9 @@
 "use client";
 
+import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 import Image from "next/image";
 import { useLayoutEffect, useRef } from "react";
 import { INTRO_KEY } from "@/lib/intro";
-import { Ticker } from "./Ticker";
 
 // ---------- Timing (ms, from when typing starts) ----------
 const TYPE_END = 1500;      // both words finish typing — and both highlights land — here
@@ -30,8 +30,17 @@ export function shouldPlayIntro() {
   }
 }
 
+// Scroll parallax while the Design section rises over the pinned hero:
+// the intro copy drifts up (in px per px scrolled).
+const BIO_DRIFT = -0.35;
+
 export function Hero() {
   const heroRef = useRef<HTMLElement>(null);
+  const reduceMotion = useReducedMotion();
+  const { scrollY } = useScroll();
+  // Clamp to the first screen — after that the hero is fully covered
+  const covered = (y: number) => Math.min(y, typeof window === "undefined" ? 0 : innerHeight);
+  const bioY = useTransform(scrollY, (y) => (reduceMotion ? 0 : covered(y) * BIO_DRIFT));
 
   // Layout effect so the intro's starting state is in place before the first client paint
   useLayoutEffect(() => {
@@ -187,33 +196,33 @@ export function Hero() {
         <div className="caret c-2" />
       </div>
 
-      <div className="bio">
-        <p>
-          Hey! Kamusta? I’m{" "}
-          <span className="name serif" tabIndex={0}>
-            Jofo!
-            <Image className="name-photo" src="/images/jofo.png" alt="Photo of Jofo" width={112} height={112} />
-          </span>
-          <br />
-          A hands-on product design leader, specializing{" "}
-          <br className="br-wide" />
-          in FinTech and AI-driven interfaces.
-        </p>
-        <p>
-          Currently, I’m a staff product designer at
-          <br />
-          <span className="company">
-            {/* eslint-disable-next-line @next/next/no-img-element -- tiny static SVG */}
-            <img src="/icons/anchorage-mark.svg" width={16} height={16} alt="" />
-            <span className="serif">Anchorage</span>
-          </span>{" "}
-          where I lead fiat experiences and{" "}
-          <br className="br-wide" />
-          shape how our design process evolves with AI.
-        </p>
-      </div>
-
-      <Ticker />
+      <motion.div className="bio-layer" style={{ y: bioY }}>
+        <div className="bio">
+          <p>
+            Hey! Kamusta? I’m{" "}
+            <span className="name serif" tabIndex={0}>
+              Jofo!
+              <Image className="name-photo" src="/images/jofo.png" alt="Photo of Jofo" width={112} height={112} />
+            </span>
+            <br />
+            A hands-on product design leader, specializing{" "}
+            <br className="br-wide" />
+            in FinTech and AI-driven interfaces.
+          </p>
+          <p>
+            Currently, I’m a staff product designer at
+            <br />
+            <span className="company">
+              {/* eslint-disable-next-line @next/next/no-img-element -- tiny static SVG */}
+              <img src="/icons/anchorage-mark.svg" width={16} height={16} alt="" />
+              <span className="serif">Anchorage</span>
+            </span>{" "}
+            where I lead fiat experiences and{" "}
+            <br className="br-wide" />
+            shape how our design process evolves with AI.
+          </p>
+        </div>
+      </motion.div>
     </section>
   );
 }

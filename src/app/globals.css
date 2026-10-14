@@ -11,6 +11,12 @@
   --sans: var(--font-graphik), system-ui, sans-serif;
   --wide: var(--font-graphik-wide), var(--font-graphik), system-ui, sans-serif;
 
+  /* How much of the Design section (its carousel edge) peeks up from the bottom of the first screen */
+  --peek: 6svh;
+  /* Desktop bottom dock (nav links / Menu button). It floats over the peeking carousel on purpose:
+     the carousel under the blur is the hint that there's more below. */
+  --dock: 6svh;
+
   /* Paper grain (fine speckle + soft blotches), used by .paper and the ticker band */
   --grain:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35  0 0 0 0 .3  0 0 0 0 .22  0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
@@ -46,8 +52,10 @@ a { color: inherit; }
 /* =========================================================================
    Hero ("Hey")
    ========================================================================= */
+/* The hero stays pinned while the Design section scrolls up over it */
 .hero {
-  position: relative;
+  position: sticky;
+  top: 0;
   width: 100%;
   height: 100vh;
   height: 100svh;
@@ -62,9 +70,13 @@ a { color: inherit; }
   --y0: 6cqh;                                               /* top band line */
   --y1: 24.8cqh;                                            /* top of row 1 */
   --y2: calc(var(--y1) + var(--row) * 2 + var(--gap));      /* bottom of row 2 */
-  --y3: 94cqh;                                              /* bottom band line */
+  --y3: calc(100cqh - var(--peek));                        /* top of the carousel */
   --v1: 7.5cqw;  --v2: 19.1cqw;  --v3: 75.5cqw;  --v4: 92.6cqw;   /* column lines */
 }
+
+/* Scroll parallax layer (Hero.tsx): the intro copy drifts up */
+.bio-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.bio { pointer-events: auto; }
 
 /* Everything inside .stage zooms together during the intro */
 .stage {
@@ -161,7 +173,7 @@ html[data-intro="playing"] .cell { clip-path: inset(0 0 100% 0); }
 .bio {
   position: absolute;
   left: calc(19.1% + 19px);
-  bottom: calc(6% + 22px);
+  bottom: calc(100cqh - var(--y3) + 22px);
   z-index: 3;
   font-family: var(--sans);
   font-size: 15px;
@@ -215,9 +227,8 @@ html[data-intro="playing"] .bio { opacity: 0; }
    It sits under the fixed bottom blur on purpose — the blurred ticker hints there's more below.
    Two identical groups slide left by one group's width, so the loop is seamless; 64px between items. */
 .ticker {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 6%;
+  position: relative;
+  height: var(--peek);
   display: flex;
   align-items: center;
   overflow: hidden;
@@ -254,7 +265,25 @@ html[data-intro="playing"] .ticker { opacity: 0; }
 /* =========================================================================
    Design section (part of the home scroll; also the /design address)
    ========================================================================= */
+/* A full-width paper sheet that scrolls up over the pinned hero. It starts tucked under the
+   first screen so only its carousel edge shows. */
 .design {
+  position: relative;
+  z-index: 1;
+  margin-top: calc(var(--peek) * -1);
+  background: var(--stage);
+  transition: box-shadow .4s ease;
+}
+.is-scrolled .design { box-shadow: 0 -16px 40px rgb(29 52 74 / .08); }   /* depth only once it's moving */
+.design::before {                 /* same paper grain as the page */
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background-image: var(--grain);
+  opacity: .2;
+  mix-blend-mode: multiply;
+}
+.design-inner {
   position: relative;
   max-width: 1040px;
   margin: 0 auto;
@@ -271,7 +300,7 @@ html[data-intro="playing"] .ticker { opacity: 0; }
 }
 .design h2 { margin-bottom: 48px; }
 
-.project-list { list-style: none; padding: 0; display: grid; gap: 64px; }
+.project-list { list-style: none; padding: 0; display: grid; gap: 24px; }
 .project-card { display: block; text-decoration: none; }
 .project-card img { display: block; width: 100%; height: auto; }
 .project-card-meta {
@@ -280,6 +309,18 @@ html[data-intro="playing"] .ticker { opacity: 0; }
   gap: 16px;
   margin-top: 16px;
   font-size: 15px;
+}
+/* Two cards side by side. Columns are weighted by each card's aspect ratio (3:2 photo, 2:3
+   portrait) so both come out the same height. */
+.project-row {
+  display: grid;
+  grid-template-columns: 1.5014fr .6667fr;
+  gap: 24px;
+  align-items: start;
+}
+.project-row > * { min-width: 0; }
+@media (max-width: 640px) {
+  .project-row { grid-template-columns: 1fr; gap: 24px; }
 }
 .project-card-title { font-family: var(--serif); font-size: 20px; }
 .project-card:hover .project-card-title { color: var(--hl); }
@@ -505,7 +546,8 @@ html[data-intro="playing"] .edge-fx { height: 0; }
   background: linear-gradient(var(--dir), rgb(var(--edge-tint) / var(--edge-wash)), rgb(var(--edge-tint) / 0));
 }
 
-/* Nav content: logo (→ Hey) on the left, page links on the right, centred in the top grid band */
+/* Top bar content: logo (→ Hey) on the left; location, live time and LinkedIn/CV on the right,
+   centred in the top grid band */
 .nav-inner {
   position: absolute;
   left: 24px; right: 24px; top: 0;
@@ -519,14 +561,50 @@ html[data-intro="playing"] .edge-fx { height: 0; }
 html[data-intro="playing"] .nav-inner { opacity: 0; pointer-events: none; }
 .logo { display: block; line-height: 0; }
 .logo svg { width: 32px; height: 14px; }
-.logo:focus-visible, .nav-links a:focus-visible { outline: 2px solid var(--hl); outline-offset: 4px; }
-.nav-right { display: flex; align-items: center; gap: 28px; }
+.logo:focus-visible, .dock a:focus-visible, .keycap:focus-visible { outline: 2px solid var(--hl); outline-offset: 4px; }
+.top-right { display: flex; align-items: center; gap: 20px; }
+.locale { display: flex; gap: 8px; font-size: 14px; }
+.clock { display: inline-block; min-width: 8ch; font-variant-numeric: tabular-nums; }
 
-/* Menu button (Figma "Menu ⌘K"): a navy keycap. It drops into the nav once you scroll;
+/* Bottom dock (desktop): page links centred, navigation hint on the left, both in the bottom
+   grid band above the blur. On scroll they drop away and the Menu button rises into place. */
+.dock {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 110;                    /* above the bottom blur strip */
+  height: var(--dock);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: opacity .5s ease .15s;
+}
+.dock > * { pointer-events: auto; }
+.dock [inert] { pointer-events: none; }
+html[data-intro="playing"] .dock { opacity: 0; }
+html[data-intro="playing"] .dock > * { pointer-events: none; }
+.dock-links { display: flex; gap: 28px; list-style: none; padding: 0; font-size: 14px; }
+.dock-links a { text-decoration: none; }
+.dock-links a:hover, .dock-links a[aria-current="page"] { color: var(--hl); }
+
+.nav-hint {
+  position: absolute;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+.keycap { display: block; padding: 0; border: 0; background: none; line-height: 0; cursor: pointer; transition: transform .12s ease; }
+.keycap + .keycap { margin-left: -4px; }       /* 4px between the two keys */
+.keycap:hover { transform: translateY(1px); }
+.keycap:hover img { filter: brightness(.85); }
+
+/* Menu button (Figma "Menu ⌘K"): a navy keycap. It rises into the links' place once you scroll;
    on hover it presses down — the thick bottom edge thins as the key moves 2px. */
 .menu-trigger {
   position: absolute;
-  right: 0;
+  left: 50%;                       /* centred via Motion's x: -50% */
   top: calc(50% - 17px);
   display: inline-flex;
   align-items: center;
@@ -554,9 +632,6 @@ html[data-intro="playing"] .nav-inner { opacity: 0; pointer-events: none; }
   transition: background-color .2s ease;
 }
 .menu-trigger:hover .menu-trigger-key { background: #4A5C6C; }
-.nav-links { display: flex; gap: 28px; list-style: none; padding: 0; font-size: 14px; }
-.nav-links a { text-decoration: none; }
-.nav-links a:hover, .nav-links a[aria-current="page"] { color: var(--hl); }
 
 /* LinkedIn + CV icons */
 .social { display: flex; align-items: center; gap: 8px; list-style: none; padding: 0; }
@@ -712,7 +787,6 @@ html[data-intro="playing"] .mobile-bar { opacity: 0; pointer-events: none; }
     --y3: 65.1cqh;                /* rule above the intro copy */
   }
   .ln.y0, .ln.x2, .cell-3 { display: none; }
-  .ln.x3 { bottom: auto; height: var(--y3); }   /* stops at the rule above the copy */
   .w-2 { --pad: 0.03em 0.03em 0 0.02em; }        /* highlight starts right at the "C" */
 
   .bio {
@@ -725,19 +799,19 @@ html[data-intro="playing"] .mobile-bar { opacity: 0; pointer-events: none; }
   }
   .bio .br-wide { display: none; }
 
-  /* Carousel sits on the bottom edge of the screen, its lower half under the 4vh blur —
-     a hint there's more below. The hero's content stays in the top ~85%. */
-  .ticker { height: max(48px, 8vh); bottom: 0; }
+  /* The carousel edge of the Design section peeks up from the bottom of the screen, under the
+     blur — a hint there's more below. The hero's content stays in the top ~85%. */
+  :root { --peek: max(48px, 8vh); }
   .edge-blur--bottom { --edge-h: 7vh; }
   .mobile-bar { bottom: max(6px, calc(2vh - 12px)); }
 
   /* Top bar is just the logo; pages + LinkedIn/CV live in the bottom bar */
   .edge-blur--top { --edge-h: 72px; }
   .nav-inner { left: 16px; right: 16px; height: 46px; }
-  .nav-right, .menu-trigger { display: none; }
+  .top-right, .dock { display: none; }
   .mobile-bar { display: flex; }
 
-  .design { padding: 96px 16px 160px; }
+  .design-inner { padding: 96px 16px 160px; }
   .page { padding: 112px 20px 160px; }
   .modal-backdrop { padding: 56px 12px; }
   .modal-panel { padding: 48px 20px 24px; }
