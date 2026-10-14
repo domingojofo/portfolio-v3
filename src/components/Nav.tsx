@@ -55,7 +55,7 @@ const SCROLL_KEYS = new Set(["ArrowDown", "PageDown", " ", "End"]);
 // The nav steps aside only when the visitor scrolls down themselves (wheel, trackpad, swipe,
 // scroll keys). It comes back on every page switch and at the top of the page. Scrolls the
 // site does on its own (opening /design at its section, smooth-scrolling after a link) don't hide it.
-function useNavHidden(pathname: string, threshold = 24) {
+export function useNavHidden(pathname: string, threshold = 24) {
   const [hidden, setHidden] = useState(false);
 
   // A new page always shows the nav
@@ -108,6 +108,24 @@ function useNavHidden(pathname: string, threshold = 24) {
   return hidden;
 }
 
+// The ← → hint steps away while scrolling down and comes back as soon as you scroll up
+function useHintHidden(threshold = 24) {
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    let last = scrollY;
+    const onScroll = () => {
+      const y = scrollY;
+      if (y <= threshold) setHidden(false);
+      else if (y > last + 2) setHidden(true);
+      else if (y < last - 2) setHidden(false);
+      last = y;
+    };
+    addEventListener("scroll", onScroll, { passive: true });
+    return () => removeEventListener("scroll", onScroll);
+  }, [threshold]);
+  return hidden;
+}
+
 // Live New York time, HH:MM:SS (24h). Rendered after mount so server and client HTML match.
 const nycTime = new Intl.DateTimeFormat("en-GB", {
   timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
@@ -144,6 +162,7 @@ export function Nav() {
   const scrolled = useNavHidden(pathname);   // true → links + hint step aside, Menu button shows
   const { open, setOpen } = useMenu();
   const go = usePageStep();
+  const hintHidden = useHintHidden();
   useArrowKeyNav(go);
   const links = pages.slice(1);
 
@@ -166,9 +185,9 @@ export function Nav() {
         <motion.div
           className="nav-hint"
           initial={false}
-          animate={scrolled ? { y: 48, opacity: 0 } : { y: 0, opacity: 1 }}
-          transition={{ duration: 0.4, ease, delay: scrolled ? 0 : STAGGER * links.length }}
-          inert={scrolled}
+          animate={hintHidden ? { y: 24, opacity: 0 } : { y: 0, opacity: 1 }}
+          transition={{ duration: 0.35, ease }}
+          inert={hintHidden}
         >
           <button type="button" className="keycap" aria-label="Previous page" onClick={() => go(-1)}>
             {/* eslint-disable-next-line @next/next/no-img-element -- tiny static SVG */}

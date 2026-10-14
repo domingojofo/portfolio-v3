@@ -541,7 +541,8 @@ html[data-intro="playing"] .ticker { opacity: 0; }
   pointer-events: none;
 }
 .edge-blur--top    { top: 0;    --edge-h: 96px; --dir: to bottom; }
-.edge-blur--bottom { bottom: 0; --edge-h: 68px; --dir: to top; }
+/* The bottom strip is taller and blurs harder than the top (--b1…--b4 are its four layers) */
+.edge-blur--bottom { bottom: 0; --edge-h: 110px; --dir: to top; --b1: 2px; --b2: 5px; --b3: 10px; --b4: 20px; }
 
 /* The strips arrive after the hero intro. The blur layers grow out from the screen edge —
    growing height rather than fading, because opacity < 1 would switch backdrop-filter off
@@ -555,22 +556,22 @@ html[data-intro="playing"] .ticker { opacity: 0; }
 html[data-intro="playing"] .edge-fx { height: 0; }
 .edge-fx > i { position: absolute; inset: 0; }
 .edge-fx > i:nth-child(1) {
-  -webkit-backdrop-filter: blur(1px); backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(var(--b1, 1px)); backdrop-filter: blur(var(--b1, 1px));
   -webkit-mask: linear-gradient(var(--dir), #000 40%, transparent 100%);
           mask: linear-gradient(var(--dir), #000 40%, transparent 100%);
 }
 .edge-fx > i:nth-child(2) {
-  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(var(--b2, 3px)); backdrop-filter: blur(var(--b2, 3px));
   -webkit-mask: linear-gradient(var(--dir), #000 25%, transparent 75%);
           mask: linear-gradient(var(--dir), #000 25%, transparent 75%);
 }
 .edge-fx > i:nth-child(3) {
-  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(var(--b3, 6px)); backdrop-filter: blur(var(--b3, 6px));
   -webkit-mask: linear-gradient(var(--dir), #000 10%, transparent 50%);
           mask: linear-gradient(var(--dir), #000 10%, transparent 50%);
 }
 .edge-fx > i:nth-child(4) {
-  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(var(--b4, 12px)); backdrop-filter: blur(var(--b4, 12px));
   -webkit-mask: linear-gradient(var(--dir), #000 0%, transparent 28%);
           mask: linear-gradient(var(--dir), #000 0%, transparent 28%);
 }
@@ -809,6 +810,122 @@ html[data-intro="playing"] .mobile-bar { opacity: 0; pointer-events: none; }
 }
 
 /* =========================================================================
+   Icon toolbar (Figma "Toolbar" frames) — being tested: visit /nav-test to switch it on
+   ========================================================================= */
+.tb {
+  position: fixed;
+  bottom: 20px;                    /* bottom centre, where the word nav was */
+  left: 50%;
+  translate: -50% 0;
+  z-index: 120;                    /* above the edge blur */
+  transition: opacity .5s ease .15s;
+}
+html[data-intro="playing"] .tb { opacity: 0; pointer-events: none; }
+
+/* Which nav shows: the word nav by default; the icon toolbar in toolbar mode (html.nav-toolbar,
+   set by the ?nav=toolbar switch). The ← → hint stays in toolbar mode. */
+html:not(.nav-toolbar) .tb { display: none; }
+html.nav-toolbar :is(.dock-links, .dock .menu-trigger, .mobile-bar .page-menu-button) { display: none; }
+/* Toolbar mode: the dock holds only the ← → hint, in its original spot in the bottom band (it
+   slides away while scrolling down and back up when scrolling up — see useHintHidden in Nav.tsx).
+   On mobile the bottom bar keeps just LinkedIn + CV, level with the toolbar. */
+@media (max-width: 1023px) {
+  html.nav-toolbar .mobile-bar { bottom: calc(20px + 49px / 2 - 8px); }    /* centred on the toolbar */
+}
+.tb-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 49px;
+  padding: 0 8px;
+  border: 1px dashed #0D2741;
+  border-radius: 8px;
+  background: rgb(217 217 210 / .3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+          backdrop-filter: blur(14px) saturate(1.2);
+}
+
+.tb-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color .3s ease;
+}
+/* No focus ring: a focused icon shows the same brackets, arrow and tooltip as hover */
+.tb-item:focus-visible { outline: none; }
+/* Icons are the Figma SVGs used as masks, so one file can be navy, light or white */
+.tb-icon {
+  flex: none;
+  width: 28px;
+  height: 100%;
+  background: currentColor;
+  -webkit-mask: var(--icon) center / 28px 32px no-repeat;
+          mask: var(--icon) center / 28px 32px no-repeat;
+}
+/* Selected: orange keycap, light icon (and its label until you scroll) */
+.tb-item.is-selected {
+  color: #D9D9D2;
+  background: var(--hl);
+  border: 1px solid #FAA87E;
+  border-bottom-width: 2px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .2), inset 0 1px 1px rgb(255 255 255 / .19);
+}
+.tb-label { display: block; overflow: hidden; white-space: nowrap; }
+.tb-label > span {
+  display: block;
+  padding-right: 8px;
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 20px;
+}
+/* Hover: four corner brackets frame the item */
+.tb-brackets { --w: 2px; position: absolute; inset: -1px; pointer-events: none; color: var(--hl); }   /* --w: bracket stroke */
+.tb-brackets i { position: absolute; width: 9px; height: 10px; border: 0 solid currentColor; }
+.tb-brackets i:nth-child(1) { top: 0; left: 0; border-top-width: var(--w); border-left-width: var(--w); border-top-left-radius: 4px; }
+.tb-brackets i:nth-child(2) { top: 0; right: 0; border-top-width: var(--w); border-right-width: var(--w); border-top-right-radius: 4px; }
+.tb-brackets i:nth-child(3) { bottom: 0; left: 0; border-bottom-width: var(--w); border-left-width: var(--w); border-bottom-left-radius: 4px; }
+.tb-brackets i:nth-child(4) { bottom: 0; right: 0; border-bottom-width: var(--w); border-right-width: var(--w); border-bottom-right-radius: 4px; }
+/* The arrow rides above the hovered (or selected) item; its tip dips just into the bar */
+.tb-arrow { position: absolute; left: 0; top: -17px; z-index: 2; line-height: 0; pointer-events: none; }
+/* The arrow always hovers: a gentle up-and-down bob (its position along the bar is animated by Motion) */
+.tb-arrow img { animation: tb-bob 1.6s ease-in-out infinite; }
+@keyframes tb-bob { 50% { transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .tb-arrow img { animation: none; } }
+.tb-tooltip {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 4px);           /* 4px below the icon */
+  padding: 4px 8px;
+  border: 1px solid rgb(29 52 74 / .3);
+  border-radius: 8px;
+  background: var(--stage);
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 20px;
+  white-space: nowrap;
+  pointer-events: none;
+  isolation: isolate;
+}
+.tb-tooltip::before {             /* same paper grain as the page, under the text */
+  content: "";
+  position: absolute; inset: 0;
+  z-index: -1;
+  background-image: var(--grain);
+  opacity: .2;
+  mix-blend-mode: multiply;
+}
+
+/* =========================================================================
    iPad + mobile (below 1024px), from the "iPhone 17" Figma frame
    ========================================================================= */
 @media (max-width: 1023px) {
@@ -838,7 +955,7 @@ html[data-intro="playing"] .mobile-bar { opacity: 0; pointer-events: none; }
   /* The carousel edge of the Design section peeks up from the bottom of the screen, under the
      blur — a hint there's more below. The hero's content stays in the top ~85%. */
   :root { --peek: max(48px, 8vh); }
-  .edge-blur--bottom { --edge-h: 7vh; }
+  .edge-blur--bottom { --edge-h: 11vh; }
   .mobile-bar { bottom: max(6px, calc(2vh - 12px)); }
 
   /* Top bar is just the logo; pages + LinkedIn/CV live in the bottom bar */
