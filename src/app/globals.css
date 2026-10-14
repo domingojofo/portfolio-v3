@@ -973,6 +973,7 @@ html.nav-toolbar :is(.dock-links, .dock .menu-trigger, .mobile-bar .page-menu-bu
   /* The carousel edge of the Design section peeks up from the bottom of the screen, under the
      blur — a hint there's more below. The hero's content stays in the top ~85%. */
   :root { --peek: max(48px, 8vh); }
+  .is-scrolled .design { box-shadow: 0 -4px 16px rgb(29 52 74 / .05); }   /* subtler on a small screen: tighter and lighter */
   .edge-blur--bottom { --edge-h: 14vh; }   /* taller on mobile so it backs the 1.25× toolbar */
   .mobile-bar { bottom: max(6px, calc(2vh - 12px)); }
 

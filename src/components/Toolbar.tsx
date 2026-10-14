@@ -12,7 +12,7 @@ import { useNavHidden } from "./Nav";
 //  - The current page is an orange keycap with its label.
 //  - Hover: four corner brackets frame the item, the arrow glides above it, a tooltip shows its name.
 //  - Click: navigates; the new item becomes the keycap and its label slides in from the left.
-//  - Scrolling down folds the label away (icon-only keycap); it comes back on the next page switch.
+//  - Mobile: scrolling down fades the arrow away (the label stays); it comes back on the next page switch.
 // Icons follow the page order, so ← / → step through them left to right.
 
 const icons: Record<string, { icon: string; label: string; tooltip: string }> = {
@@ -35,6 +35,10 @@ export function Toolbar() {
   const current = pages[pageIndex(pathname)].href;
   const scrolledDown = useNavHidden(pathname);   // true once the visitor scrolls down
   const labelHidden = FOLD_LABEL_ON_SCROLL && scrolledDown;
+  // Mobile: the floating arrow fades down out of the way once the visitor scrolls down,
+  // and comes back on the next page switch (or back at the top)
+  const isMobile = useIsMobile();
+  const arrowHidden = isMobile && scrolledDown;
   const [hovered, setHovered] = useState<string | null>(null);
   const itemRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
   const barRef = useRef<HTMLDivElement>(null);
@@ -63,8 +67,8 @@ export function Toolbar() {
           className="tb-arrow"
           aria-hidden="true"
           initial={false}
-          animate={{ x: arrowX - 20 }}   // the arrow asset is 40px wide with its shadow
-          transition={spring}
+          animate={{ x: arrowX - 20, y: arrowHidden ? 10 : 0, opacity: arrowHidden ? 0 : 1 }}   // the arrow asset is 40px wide with its shadow
+          transition={{ x: spring, y: { duration: 0.35, ease }, opacity: { duration: 0.25, ease } }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- static Figma asset */}
           <img src="/icons/toolbar/arrow.svg" width={39.8234} height={40.1742} alt="" />
@@ -150,4 +154,17 @@ export function Toolbar() {
       </nav>
     </div>
   );
+}
+
+// Same breakpoint as the mobile layout in globals.css
+function useIsMobile() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = matchMedia("(max-width: 1023px)");
+    const sync = () => setMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return mobile;
 }
