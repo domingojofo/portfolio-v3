@@ -10,7 +10,7 @@ export function ProjectView({ project, headingId }: { project: Project; headingI
         <span>{project.role}</span>
         <span>{project.year}</span>
       </div>
-      <Image src={project.cover.src} width={project.cover.width} height={project.cover.height} alt={project.cover.alt} sizes="(max-width: 1088px) 100vw, 1040px" />
+      <Image src={project.cover.src} width={project.cover.width} height={project.cover.height} alt={project.cover.alt} sizes="(max-width: 1008px) 100vw, 960px" />
       <p>{project.summary}</p>
     </article>
   );

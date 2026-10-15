@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { pageIndex, pages } from "@/lib/pages";
+import { tick } from "@/lib/tick";
 import { useNavHidden } from "./Nav";
 
 // Icon toolbar (Figma "Toolbar" frames) — the nav being tested in place of the word nav.
@@ -46,6 +47,26 @@ export function Toolbar() {
 
   // The arrow sits above the hovered item, or the current one when nothing is hovered
   const target = hovered ?? current;
+
+  // The menu's tick each time the visitor moves the arrow to another icon (hover, focus, ← →).
+  // Silent when the page changes by scrolling (Hey ↔ Design swap the address as you scroll),
+  // on first load, and on touch (the arrow just follows the tapped page).
+  const lastKey = useRef(0);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") lastKey.current = performance.now(); };
+    addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+  }, []);
+  const lastTarget = useRef(target);
+  const lastHovered = useRef(hovered);
+  useEffect(() => {
+    const moved = target !== lastTarget.current;
+    const byPointer = hovered !== lastHovered.current;            // hover/focus moved, or the pointer left the bar
+    const byKeys = performance.now() - lastKey.current < 1000;    // ← → switched the page
+    lastTarget.current = target;
+    lastHovered.current = hovered;
+    if (moved && (byPointer || byKeys) && !matchMedia("(hover: none)").matches) tick();
+  }, [target, hovered]);
   useEffect(() => {
     const measure = () => {
       const el = itemRefs.current[target], bar = barRef.current;

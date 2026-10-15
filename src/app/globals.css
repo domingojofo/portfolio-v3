@@ -11,10 +11,10 @@
   --sans: var(--font-graphik), system-ui, sans-serif;
   --wide: var(--font-graphik-wide), var(--font-graphik), system-ui, sans-serif;
 
-  /* Width of the project panels (breakout, after robwinters.github.io): wider than the 1040px
+  /* Width of the project panels (breakout, after robwinters.github.io): wider than the 960px
      text column, up to 1440px, always leaving at least 48px each side. The hero's outer grid
      lines use the same width, so they line up with the panels' edges. */
-  --panel-w: clamp(min(1040px, 100vw - 48px), 100vw - 96px, 1440px);
+  --panel-w: clamp(min(960px, 100vw - 48px), 100vw - 96px, 1440px);
 
   /* How much of the Design section (its carousel edge) peeks up from the bottom of the first screen */
   --peek: 6svh;
@@ -302,7 +302,7 @@ html[data-intro="playing"] .ticker { opacity: 0; }
 }
 .design-inner {
   position: relative;
-  max-width: 1040px;
+  max-width: 960px;                /* text column (after robwinters.github.io); panels break out */
   margin: 0 auto;
   padding: 160px 24px 200px;
   box-sizing: content-box;
@@ -318,7 +318,7 @@ html[data-intro="playing"] .ticker { opacity: 0; }
 .design h2 { margin-bottom: 48px; }
 
 /* minmax(0, 1fr): the column never grows past the screen to fit a card's minimum width.
-   Breakout (after robwinters.github.io): the text stays in the 1040px column, but the project
+   Breakout (after robwinters.github.io): the text stays in the 960px column, but the project
    panels grow past it on wider windows, up to 1440px, always leaving at least 48px each side.
    On narrow screens 100vw − 96px is smaller than the column, so they simply fill it. */
 .project-list {
@@ -332,9 +332,26 @@ html[data-intro="playing"] .ticker { opacity: 0; }
 }
 .project-list > li { min-width: 0; }
 /* Panels: softly rounded, 6px at 960px wide growing to 9px at 1440px */
-.project-list :is(.project-card, .td-card, .banks-card, .va-card) {
+.project-list :is(.project-card, .td-card, .banks-card, .va-card, .chipp-card) {
   border-radius: clamp(6px, (100vw - 96px) * .00625, 9px);
   overflow: hidden;
+}
+/* Company intros (in the 960px text column): name and role on the left, a short summary on the right */
+.company-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  width: 100%;
+  max-width: 960px;                /* the text column, while the panels around it break out */
+  margin-inline: auto;
+  padding: 120px 0 16px;
+}
+.company-intro:first-child { padding-top: 24px; }
+.company-name { font-family: var(--serif); font-weight: 400; font-size: clamp(26px, 2.4vw, 34px); line-height: 1.1; }
+.company-meta { margin-top: 8px; font-size: 15px; }
+.company-summary { max-width: 520px; font-size: 17px; line-height: 1.5; }
+@media (max-width: 640px) {
+  .company-intro { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: 72px; }
 }
 .project-card { display: block; text-decoration: none; }
 .project-card img { display: block; width: 100%; height: auto; }
@@ -375,7 +392,7 @@ html[data-intro="playing"] .ticker { opacity: 0; }
 .page h1 { margin-bottom: 32px; }
 .page h2 { font-family: var(--serif); font-weight: 400; font-size: 28px; margin: 48px 0 12px; }
 .page p + p, .page ul { margin-top: 16px; }
-.page.wide { max-width: 1040px; }
+.page.wide { max-width: 960px; }
 
 .list { list-style: none; padding: 0; border-top: 1px solid var(--line); }
 .list li { border-bottom: 1px solid var(--line); }
@@ -586,14 +603,58 @@ html[data-intro="playing"] .edge-fx { height: 0; }
    centred in the top grid band */
 .nav-inner {
   position: absolute;
-  left: 24px; right: 24px; top: 0;
+  /* Snapped to the grid (the hero's outer lines = the project panels' edges). At the very top
+     the logo and links sit 16px inside the lines, in the top corner cells; once you scroll they
+     slide out into the margins, 8px outside the lines. */
+  --gutter: calc((100% - var(--panel-w)) / 2);
+  left: calc(var(--gutter) + 16px);
+  right: calc(var(--gutter) + 16px);
+  top: 0;
   height: 6vh;
   display: flex;
   align-items: center;
   justify-content: space-between;
   pointer-events: auto;
-  transition: opacity .5s ease .15s;
+  transition: opacity .5s ease .15s, left .5s cubic-bezier(.22, 1, .36, 1), right .5s cubic-bezier(.22, 1, .36, 1);
 }
+@media (min-width: 1024px) {
+  /* Scrolled: logo 8px left of the left line; LinkedIn + CV (40px) 8px right of the right line */
+  html.is-scrolled .nav-inner {
+    left: max(8px, var(--gutter) - 8px - 32px);
+    right: max(8px, var(--gutter) - 8px - 40px);
+  }
+  /* The time moves to the bottom-right corner on desktop */
+  .top-right .locale { display: none; }
+}
+
+/* Bottom-right location + time (desktop). White + difference = the inverse of what's behind it. */
+.locale-corner {
+  position: fixed;
+  right: calc((100% - var(--panel-w)) / 2 + 16px);
+  bottom: 0;
+  z-index: 115;
+  height: var(--dock);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 15px;
+  text-transform: uppercase;
+  color: #fff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+  transition: opacity .5s ease .15s, right .5s cubic-bezier(.22, 1, .36, 1);
+}
+.locale-corner .clock { min-width: 8ch; text-align: right; }
+.locale-corner-icon {
+  width: 13.43px; height: 16.67px;
+  margin-top: -3px;                /* sits on the text's baseline, as in Figma */
+  background: currentColor;
+  -webkit-mask: url(/icons/nyc.svg) center / contain no-repeat;
+          mask: url(/icons/nyc.svg) center / contain no-repeat;
+}
+html[data-intro="playing"] .locale-corner { opacity: 0; }
+@media (max-width: 1023px) { .locale-corner { display: none; } }
 html[data-intro="playing"] .nav-inner { opacity: 0; pointer-events: none; }
 .logo { display: block; line-height: 0; }
 .logo svg { width: 32px; height: 14px; }

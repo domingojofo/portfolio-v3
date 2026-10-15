@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import { site } from "@/content/site";
 import { pageIndex, pages } from "@/lib/pages";
+import { tick } from "@/lib/tick";
 
 // Command menu (ported from portfolio-v2): ⌘K / Ctrl+K anywhere, the desktop Menu button,
 // or the mobile page button. Desktop: a panel that grows out of the Menu button.
@@ -52,10 +53,9 @@ export function MenuProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ---------- Sounds ----------
+// ---------- Sounds (the tick lives in lib/tick, shared with the toolbar) ----------
 function useSounds() {
   const click = useRef<HTMLAudioElement | null>(null);
-  const ctx = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     const audio = new Audio("/audio/click.mp3");
@@ -69,26 +69,6 @@ function useSounds() {
     if (!audio) return;
     audio.currentTime = 0;
     audio.play().catch(() => {});
-  }, []);
-
-  // A short synthesized tick for moving through items
-  const tick = useCallback(() => {
-    try {
-      ctx.current ??= new AudioContext();
-      const ac = ctx.current;
-      const t = ac.currentTime;
-      const osc = ac.createOscillator();
-      const gain = ac.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(1800, t);
-      osc.frequency.exponentialRampToValueAtTime(900, t + 0.03);
-      gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(0.08, t + 0.004);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
-      osc.connect(gain).connect(ac.destination);
-      osc.start(t);
-      osc.stop(t + 0.06);
-    } catch {}
   }, []);
 
   return { playClick, tick };

@@ -127,8 +127,8 @@ function useHintHidden(threshold = 24) {
 }
 
 // Live New York time, HH:MM:SS (24h). Rendered after mount so server and client HTML match.
-const nycTime = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+const nycTime = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York", hour: "numeric", minute: "2-digit", hour12: true,
 });
 function NycClock() {
   const [now, setNow] = useState<Date | null>(null);
@@ -136,7 +136,7 @@ function NycClock() {
     let timer: ReturnType<typeof setTimeout>;
     const tick = () => {
       setNow(new Date());
-      timer = setTimeout(tick, 1000 - (Date.now() % 1000));   // land on each new second
+      timer = setTimeout(tick, 1000 - (Date.now() % 1000));   // land on each new second (the minute flips on time)
     };
     tick();
     return () => clearTimeout(timer);
@@ -180,6 +180,15 @@ export function Nav() {
           </div>
         </div>
       </header>
+
+      {/* Desktop: location + time in the bottom-right corner (Figma 152:65629). Its own fixed
+          layer, outside the header and dock, so mix-blend-mode can invert it against whatever
+          is underneath — dark on the paper, light over photos and dark panels. */}
+      <p className="locale-corner">
+        <span>Brooklyn, NYC</span>
+        <span className="locale-corner-icon" aria-hidden="true" />
+        <NycClock />
+      </p>
 
       <nav className="dock" aria-label="Main">
         <motion.div

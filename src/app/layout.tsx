@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import { MenuProvider } from "@/components/CommandMenu";
 import { BottomBlur } from "@/components/EdgeBlur";
@@ -27,6 +28,9 @@ const graphikWide = localFont({
   weight: "400",
 });
 
+// Bottom-right location + time (Figma 152:65629)
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", weight: "400" });
+
 export const metadata: Metadata = {
   title: { default: "Jofo — Relentlessly Collaborative", template: "%s — Jofo" },
   description: "Hands-on product design leader specializing in FinTech and AI-driven interfaces.",
@@ -49,7 +53,7 @@ export default function RootLayout({ children, modal }: LayoutProps<"/">) {
     // The intro script sets data-intro on <html> before React hydrates.
     // data-scroll-behavior="smooth": keep smooth in-page scrolling (Hey ↔ Design) but jump
     // instantly to the top on page changes (Next 16 no longer does this by default).
-    <html lang="en" className={`${maragsa.variable} ${graphik.variable} ${graphikWide.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html lang="en" className={`${maragsa.variable} ${graphik.variable} ${graphikWide.variable} ${geistMono.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: introScript }} />
         <script dangerouslySetInnerHTML={{ __html: navVariantScript }} />
